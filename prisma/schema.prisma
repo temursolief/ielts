@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TEACHER
+  STUDENT
+  ADMIN
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  TIME_EXPIRED
+  TERMINATED_VIOLATION
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE_SINGLE
+  MULTIPLE_CHOICE_MULTI
+  TRUE_FALSE_NOT_GIVEN
+  YES_NO_NOT_GIVEN
+  MATCHING_HEADINGS
+  MATCHING_INFORMATION
+  MATCHING_FEATURES
+  MATCHING_SENTENCE_ENDINGS
+  SENTENCE_COMPLETION
+  SUMMARY_COMPLETION
+  NOTE_COMPLETION
+  TABLE_COMPLETION
+  FLOWCHART_COMPLETION
+  DIAGRAM_LABEL
+  SHORT_ANSWER
+}
+
+enum TestStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TestSkill {
+  READING
+  LISTENING
+  WRITING
+  SPEAKING
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  role          Role      @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Teacher relations
+  createdTests      Test[]          @relation("TeacherTests")
+  assignments       Assignment[]    @relation("TeacherAssignments")
+  teacherStudents   TeacherStudent[] @relation("TeacherRelation")
+
+  // Student relations
+  studentTeachers   TeacherStudent[] @relation("StudentRelation")
+  studentAssignments Assignment[]    @relation("StudentAssignments")
+  attempts          TestAttempt[]
+  activityEvents    ActivityEvent[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model TeacherStudent {
+  id        String   @id @default(cuid())
+  teacherId String
+  studentId String
+  createdAt DateTime @default(now())
+
+  teacher   User     @relation("TeacherRelation", fields: [teacherId], references: [id], onDelete: Cascade)
+  student   User     @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, studentId])
+  @@index([teacherId])
+  @@index([studentId])
+}
+
+model Test {
+  id          String     @id @default(cuid())
+  title       String
+  skill       TestSkill  @default(READING)
+  status      TestStatus @default(DRAFT)
+  durationMin Int        @default(60)
+  teacherId   String
+  version     Int        @default(1)
+  schemaVer   String     @default("1.0")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  publishedAt DateTime?
+
+  teacher     User         @relation("TeacherTests", fields: [teacherId], references: [id])
+  passages    Passage[]
+  assignments Assignment[]
+  attempts    TestAttempt[]
+
+  @@index([teacherId])
+  @@index([status])
+}
+
+model Passage {
+  id           String     @id @default(cuid())
+  testId       String
+  order        Int
+  title        String
+  body         String     @db.Text
+  createdAt    DateTime   @default(now())
+
+  test         Test           @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questionGroups QuestionGroup[]
+
+  @@index([testId])
+}
+
+model QuestionGroup {
+  id           String       @id @default(cuid())
+  passageId    String
+  order        Int
+  questionType QuestionType
+  instructions String?      @db.Text
+  options      Json?        // For matching/MC: array of option strings
+  createdAt    DateTime     @default(now())
+
+  passage      Passage      @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  questions    Question[]
+
+  @@index([passageId])
+}
+
+model Question {
+  id           String       @id @default(cuid())
+  groupId      String
+  number       Int
+  stem         String       @db.Text
+  options      Json?        // MC options specific to this question
+  wordLimit    Int?
+  createdAt    DateTime     @default(now())
+
+  group        QuestionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  answerKey    AnswerKey?
+  studentAnswers StudentAnswer[]
+
+  @@index([groupId])
+  @@index([number])
+}
+
+model AnswerKey {
+  id             String   @id @default(cuid())
+  questionId     String   @unique
+  acceptedAnswers Json    // Array of accepted answer strings
+  caseSensitive  Boolean  @default(false)
+  explanation    String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  testId     String
+  teacherId  String
+  studentId  String
+  dueDate    DateTime?
+  createdAt  DateTime @default(now())
+
+  test       Test     @relation(fields: [testId], references: [id])
+  teacher    User     @relation("TeacherAssignments", fields: [teacherId], references: [id])
+  student    User     @relation("StudentAssignments", fields: [studentId], references: [id])
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([testId])
+}
+
+model TestAttempt {
+  id              String        @id @default(cuid())
+  testId          String
+  studentId       String
+  status          AttemptStatus @default(NOT_STARTED)
+  startedAt       DateTime?
+  submittedAt     DateTime?
+  timeLimitSec    Int
+  serverDeadline  DateTime?
+  rawScore        Int?
+  totalQuestions  Int?
+  correctCount    Int?
+  incorrectCount  Int?
+  unansweredCount Int?
+  bandEstimate    Float?
+  reviewEnabled   Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  test            Test          @relation(fields: [testId], references: [id])
+  student         User          @relation(fields: [studentId], references: [id])
+  answers         StudentAnswer[]
+  violation       AttemptViolation?
+
+  @@index([studentId])
+  @@index([testId])
+  @@index([status])
+}
+
+model StudentAnswer {
+  id          String      @id @default(cuid())
+  attemptId   String
+  questionId  String
+  answer      Json        // String or array of strings
+  isCorrect   Boolean?
+  savedAt     DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  attempt     TestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question    Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+}
+
+model AttemptViolation {
+  id          String      @id @default(cuid())
+  attemptId   String      @unique
+  type        String      @default("TAB_SWITCH")
+  occurredAt  DateTime    @default(now())
+  details     Json?
+
+  attempt     TestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+}
+
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // ATTEMPT_COMPLETED, TEST_CREATED, etc.
+  metadata  Json?
+  date      DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([date])
+}
+
+// Band conversion config — stored in DB for flexibility
+model BandConfig {
+  id       String @id @default(cuid())
+  skill    TestSkill
+  rawScore Int
+  band     Float
+
+  @@unique([skill, rawScore])
+  @@index([skill])
+}
