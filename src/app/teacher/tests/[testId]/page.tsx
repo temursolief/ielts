@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { TestManageClient } from "./TestManageClient";
 
+export const instant = false;
+
 export default async function TestDetailPage({
   params,
 }: {

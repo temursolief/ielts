@@ -1,9 +1,11 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
 export const instant = false;
 
 export default async function Home() {
+  await connection();
   const session = await auth();
   if (session?.user) {
     const dest = session.user.role === "TEACHER" ? "/teacher" : "/student";

@@ -4,6 +4,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
 import Link from "next/link";
 
+export const instant = false;
+
 async function getStudentStats(studentId: string) {
   const [assignments, attempts, activityEvents] = await Promise.all([
     prisma.assignment.findMany({

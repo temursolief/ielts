@@ -270,10 +270,9 @@ export function ExamClient({ attempt, test, initialAnswers }: ExamClientProps) {
             <h2 className="font-semibold text-[#202923]">{activePassage.title}</h2>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div
-              className="passage-body"
-              dangerouslySetInnerHTML={{ __html: activePassage.body.replace(/\n/g, "<br/>") }}
-            />
+            <div className="passage-body" style={{ whiteSpace: "pre-wrap" }}>
+              {activePassage.body}
+            </div>
           </div>
         </div>
 

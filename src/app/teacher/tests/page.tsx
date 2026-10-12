@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
+export const instant = false;
+
 export default async function TeacherTestsPage() {
   const session = await auth();
   const tests = await prisma.test.findMany({

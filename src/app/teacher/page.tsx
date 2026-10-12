@@ -5,6 +5,8 @@ import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
+export const instant = false;
+
 async function getTeacherStats(teacherId: string) {
   const [
     studentCount,

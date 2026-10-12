@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
+export const instant = false;
+
 export default async function ResultsPage({
   params,
   searchParams,

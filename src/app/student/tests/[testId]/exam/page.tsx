@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { ExamClient } from "@/components/exam/ExamClient";
 
+export const instant = false;
+
 export default async function ExamPage({
   params,
   searchParams,
